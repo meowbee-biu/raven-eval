@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raven Insurance — AI Agent Eval</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --teal: #0d9488;
+    --teal-light: #5eead4;
+    --teal-dim: rgba(13,148,136,0.12);
+    --red: #f97066;
+    --red-dim: rgba(249,112,102,0.12);
+    --amber: #fbbf24;
+    --amber-dim: rgba(251,191,36,0.1);
+    --white: #f0f4f8;
+    --muted: #64748b;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 40px 24px 80px;
+  }
+
+  .header {
+    max-width: 860px;
+    margin: 0 auto 36px;
+  }
+
+  .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--teal);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  h1 { font-size: 28px; font-weight: 600; color: var(--white); line-height: 1.2; }
+  h1 span { color: var(--teal-light); }
+
+  .subtitle { margin-top: 6px; font-size: 13px; color: var(--muted); font-weight: 300; }
+
+  /* API Key input */
+  .api-row {
+    max-width: 860px;
+    margin: 0 auto 28px;
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .api-input-wrap {
+    flex: 1;
+    position: relative;
+  }
+
+  .api-input-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .api-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .api-input:focus { border-color: var(--teal); }
+  .api-input::placeholder { color: var(--muted); }
+
+  .api-note {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 5px;
+    font-family: var(--mono);
+  }
+
+  .api-note a { color: var(--teal-light); text-decoration: none; }
+  .api-note a:hover { text-decoration: underline; }
+
+  /* Score bar */
+  .score-bar {
+    max-width: 860px;
+    margin: 0 auto 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .score-stat { display: flex; flex-direction: column; gap: 4px; }
+  .score-stat .val { font-family: var(--mono); font-size: 28px; font-weight: 600; line-height: 1; }
+  .score-stat .val.pass { color: var(--teal-light); }
+  .score-stat .val.fail { color: var(--red); }
+  .score-stat .val.partial { color: var(--amber); }
+  .score-stat .val.total { color: var(--white); }
+  .score-stat .stat-label { font-size: 10px; color: var(--muted); letter-spacing: 0.05em; font-family: var(--mono); }
+
+  .score-divider { width: 1px; height: 36px; background: var(--border); }
+
+  .progress-wrap { flex: 1; min-width: 180px; }
+  .progress-label { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .progress-track { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--teal), var(--teal-light)); border-radius: 99px; transition: width 0.6s cubic-bezier(.4,0,.2,1); width: 0%; }
+
+  /* Run button */
+  .run-btn {
+    display: block;
+    max-width: 860px;
+    margin: 0 auto 36px;
+    width: 100%;
+    padding: 14px;
+    background: var(--teal);
+    border: none;
+    border-radius: 8px;
+    color: #0a1a18;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .run-btn:hover:not(:disabled) { background: var(--teal-light); transform: translateY(-1px); }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Section title */
+  .section-title {
+    max-width: 860px;
+    margin: 0 auto 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* Test cards */
+  .tests { max-width: 860px; margin: 0 auto 36px; display: flex; flex-direction: column; gap: 10px; }
+
+  .test-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.4s;
+  }
+
+  .test-card.pass { border-color: rgba(13,148,136,0.4); }
+  .test-card.fail { border-color: rgba(249,112,102,0.4); }
+  .test-card.partial { border-color: rgba(251,191,36,0.35); }
+  .test-card.running { border-color: rgba(13,148,136,0.2); }
+
+  .test-header {
+    padding: 14px 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .test-header:hover { background: rgba(255,255,255,0.02); }
+
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    margin-top: 5px; flex-shrink: 0;
+    background: var(--border);
+    transition: all 0.3s;
+  }
+  .status-dot.pass { background: var(--teal); box-shadow: 0 0 8px var(--teal); }
+  .status-dot.fail { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .status-dot.partial { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .status-dot.running { background: var(--teal); animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .test-meta { flex: 1; min-width: 0; }
+  .test-category { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 3px; }
+  .test-question { font-size: 14px; font-weight: 500; color: var(--white); line-height: 1.4; }
+
+  .test-badge {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.08em; padding: 3px 10px; border-radius: 99px;
+    text-transform: uppercase; flex-shrink: 0;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .test-badge.pass { background: var(--teal-dim); color: var(--teal-light); }
+  .test-badge.fail { background: var(--red-dim); color: var(--red); }
+  .test-badge.partial { background: var(--amber-dim); color: var(--amber); }
+  .test-badge.visible { opacity: 1; }
+
+  .test-body { padding: 0 18px 16px 38px; display: none; }
+  .test-body.open { display: block; animation: fadeIn 0.2s ease; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+  .test-row { margin-bottom: 10px; }
+  .test-row-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
+
+  .test-row-content {
+    font-size: 13px; color: var(--white);
+    background: var(--surface2); border-radius: 6px;
+    padding: 10px 14px; line-height: 1.6;
+    border-left: 3px solid var(--border);
+  }
+  .test-row-content.rationale { border-left-color: var(--teal); }
+  .test-row-content.actual { border-left-color: var(--muted); color: #94a3b8; font-style: italic; }
+  .test-row-content.loading { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+
+  .keywords-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+  .keyword {
+    font-family: var(--mono); font-size: 11px; padding: 3px 8px;
+    border-radius: 4px; background: var(--surface2);
+    border: 1px solid var(--border); color: var(--muted);
+    transition: all 0.3s;
+  }
+  .keyword.matched { background: var(--teal-dim); border-color: var(--teal); color: var(--teal-light); }
+  .keyword.unmatched { background: var(--red-dim); border-color: var(--red); color: var(--red); text-decoration: line-through; opacity: 0.7; }
+
+  .score-chip {
+    display: inline-block; font-family: var(--mono); font-size: 11px;
+    padding: 3px 10px; border-radius: 99px; margin-top: 8px;
+  }
+  .score-chip.pass { background: var(--teal-dim); color: var(--teal-light); }
+  .score-chip.fail { background: var(--red-dim); color: var(--red); }
+  .score-chip.partial { background: var(--amber-dim); color: var(--amber); }
+
+  .spinner {
+    display: inline-block; width: 11px; height: 11px;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-top-color: var(--teal-light);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 8px; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-banner {
+    max-width: 860px; margin: 0 auto 20px;
+    background: var(--red-dim); border: 1px solid var(--red);
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 13px; color: var(--red);
+    font-family: var(--mono); display: none;
+  }
+
+  .footer-note {
+    max-width: 860px; margin: 0 auto;
+    font-size: 11px; color: var(--muted);
+    font-family: var(--mono); text-align: center;
+    padding-top: 24px; border-top: 1px solid var(--border);
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="label">AI Agent Evaluation — Raven Insurance</div>
+  <h1>Agent <span>Eval Script</span></h1>
+  <div class="subtitle">Live LLM evaluation powered by Groq · Tests coverage accuracy, claims handling, edge cases & hallucination prevention</div>
+</div>
+
+
+
+<!-- Error banner -->
+<div class="error-banner" id="error-banner"></div>
+
+<!-- Score summary -->
+<div class="score-bar">
+  <div class="score-stat">
+    <div class="val total" id="total-count">11</div>
+    <div class="stat-label">Total Tests</div>
+  </div>
+  <div class="score-divider"></div>
+  <div class="score-stat">
+    <div class="val pass" id="pass-count">—</div>
+    <div class="stat-label">Passed</div>
+  </div>
+  <div class="score-stat">
+    <div class="val partial" id="partial-count">—</div>
+    <div class="stat-label">Partial</div>
+  </div>
+  <div class="score-stat">
+    <div class="val fail" id="fail-count">—</div>
+    <div class="stat-label">Failed</div>
+  </div>
+  <div class="score-divider"></div>
+  <div class="progress-wrap">
+    <div class="progress-label">
+      <span>Pass Rate</span>
+      <span id="pass-pct">—</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
+</div>
+
+<button class="run-btn" id="run-btn" onclick="runEval()">▶ Run Live Evaluation</button>
+
+<div id="tests-container"></div>
+
+<div class="footer-note">
+  Powered by Groq (llama-3.3-70b-versatile) · Scoring via keyword match against expected criteria<br>
+  In production this eval would run as a Python script in the CI/CD pipeline · Built by Isabelle Ho
+</div>
+
+<script>
+const SYSTEM_PROMPT = `You are Raven, an AI Agent for Raven Insurance — a Malaysian insurance company. You help customers with questions about our three products: Life Insurance, Medical Insurance, and Travel Insurance.
+
+KEY FACTS:
+- Travel Basic: from RM 18/trip. Covers overseas medical (RM 200,000), trip cancellation, baggage loss/delay, flight delay
+- Travel Plus: from RM 45/trip. Covers overseas medical (RM 500,000), emergency evacuation, trip cancellation, baggage, flight delay
+- Travel insurance covers the full trip from departure in Malaysia including stopovers, up to 90 days
+- Surfing and extreme sports are NOT covered under any travel plan
+- Pet insurance is NOT offered
+- Car/motor insurance is NOT offered
+- We do NOT offer bundle discounts
+- Claims must be submitted within 30 days of returning. Email: claims@raveninsurance.com.my
+- Claims processed within 14 working days upon receipt of complete documents
+- For pre-existing conditions or complex medical history questions, escalate to a human specialist
+
+BEHAVIOUR RULES:
+- Be warm and conversational, not robotic
+- Never volunteer exclusions upfront — only mention when directly asked
+- If a customer disengages after hearing bad news (e.g. surfing not covered), gently highlight what IS still covered
+- Never identify yourself as an AI or bot unless directly asked
+- For pre-existing condition questions, do not attempt to assess — connect to a specialist instead
+- Keep responses concise — 3 to 5 sentences maximum`;
+
+const TEST_CASES = [
+  {
+    category: "General Purchase",
+    question: "Hi, I wanna buy a travel insurance",
+    expectedKeywords: ["travel", "plan", "coverage", "RM", "medical", "trip cancellation", "baggage"],
+    rationale: "Agent should greet warmly, introduce travel plans, mention pricing and key coverage areas"
+  },
+  {
+    category: "General Purchase",
+    question: "What does Travel Plus cover?",
+    expectedKeywords: ["medical", "evacuation", "trip cancellation", "baggage", "flight delay", "Travel Plus"],
+    rationale: "Agent should list all key coverages clearly without being robotic"
+  },
+  {
+    category: "General Purchase",
+    question: "How much does travel insurance cost?",
+    expectedKeywords: ["RM 18", "RM 45", "Travel Basic", "Travel Plus", "per trip"],
+    rationale: "Agent should give concrete pricing with plan names, not vague ranges"
+  },
+  {
+    category: "Claims",
+    question: "I lost my GoPro during my flight, how do I make a claim?",
+    expectedKeywords: ["baggage", "claim", "30 days", "receipt", "documents", "submit"],
+    rationale: "Agent should walk through the claims process: timeline, documents needed, contact"
+  },
+  {
+    category: "Claims",
+    question: "How long does a claim take to process?",
+    expectedKeywords: ["14", "working days", "complete", "documents"],
+    rationale: "Agent should give a specific SLA, not a vague answer"
+  },
+  {
+    category: "Edge Cases",
+    question: "I have a stopover in Singapore for a night before heading to Bali — does my coverage kick in from the moment I leave Malaysia, or only when I land in Bali?",
+    expectedKeywords: ["departure", "entire trip", "stopover", "covered", "Malaysia"],
+    rationale: "Agent should confirm coverage starts from departure and covers stopovers throughout"
+  },
+  {
+    category: "Edge Cases",
+    question: "Do you guys cover surfing? I surf quite a lot when I'm overseas",
+    expectedKeywords: ["not covered", "exclusion", "still covered", "medical", "other"],
+    rationale: "Agent should be honest about exclusion but retain the lead by highlighting remaining coverage"
+  },
+  {
+    category: "Edge Cases",
+    question: "Does travel insurance cover my pet if something happens to it during the trip?",
+    expectedKeywords: ["not covered", "pet", "policyholder"],
+    rationale: "Agent should clearly state exclusion without making the customer feel judged"
+  },
+  {
+    category: "Edge Cases",
+    question: "What if I get food poisoning and need to see a doctor but don't need to be hospitalised?",
+    expectedKeywords: ["outpatient", "medical", "covered", "receipt"],
+    rationale: "Agent should confirm outpatient emergency coverage and advise on documentation"
+  },
+  {
+    category: "Escalation",
+    question: "I got injured surfing 6 months ago and had to see a doctor. Would that affect my coverage now?",
+    expectedKeywords: ["specialist", "team", "connect", "right person"],
+    rationale: "Agent must not assess pre-existing conditions — should escalate smoothly without breaking conversational flow"
+  },
+  {
+    category: "Hallucination Guard",
+    question: "Do you offer car insurance?",
+    expectedKeywords: ["not offer", "car", "don't", "Life", "Medical", "Travel"],
+    rationale: "Agent must not invent a product that doesn't exist — should acknowledge and redirect"
+  }
+];
+
+const CATEGORIES = [...new Set(TEST_CASES.map(t => t.category))];
+
+function scoreResponse(response, keywords) {
+  const lower = response.toLowerCase();
+  const matched = keywords.filter(k => lower.includes(k.toLowerCase()));
+  const pct = matched.length / keywords.length;
+  if (pct >= 0.75) return { result: 'pass', matched, score: pct };
+  if (pct >= 0.4)  return { result: 'partial', matched, score: pct };
+  return { result: 'fail', matched, score: pct };
+}
+
+async function callGroq(apiKey, question) {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 200,
+      temperature: 0.3,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: question }
+      ]
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || `API error ${res.status}`);
+  }
+
+  const data = await res.json();
+  return data.choices[0].message.content.trim();
+}
+
+function buildUI() {
+  const container = document.getElementById('tests-container');
+  container.innerHTML = '';
+
+  CATEGORIES.forEach(cat => {
+    const cases = TEST_CASES.filter(t => t.category === cat);
+
+    const sectionTitle = document.createElement('div');
+    sectionTitle.className = 'section-title';
+    sectionTitle.textContent = cat;
+    container.appendChild(sectionTitle);
+
+    const group = document.createElement('div');
+    group.className = 'tests';
+
+    cases.forEach(tc => {
+      const i = TEST_CASES.indexOf(tc);
+      const card = document.createElement('div');
+      card.className = 'test-card';
+      card.id = `card-${i}`;
+
+      card.innerHTML = `
+        <div class="test-header" onclick="toggleCard(${i})">
+          <div class="status-dot" id="dot-${i}"></div>
+          <div class="test-meta">
+            <div class="test-category">${tc.category}</div>
+            <div class="test-question">${tc.question}</div>
+          </div>
+          <div class="test-badge" id="badge-${i}">—</div>
+        </div>
+        <div class="test-body" id="body-${i}">
+          <div class="test-row">
+            <div class="test-row-label">Agent Response</div>
+            <div class="test-row-content actual" id="response-${i}">Waiting to run...</div>
+          </div>
+          <div class="test-row">
+            <div class="test-row-label">Expected Keywords</div>
+            <div class="keywords-wrap" id="keywords-${i}">
+              ${tc.expectedKeywords.map(k => `<span class="keyword" data-kw="${k}">${k}</span>`).join('')}
+            </div>
+          </div>
+          <div class="test-row">
+            <div class="test-row-label">Why This Test</div>
+            <div class="test-row-content rationale">${tc.rationale}</div>
+          </div>
+          <div id="chip-${i}"></div>
+        </div>
+      `;
+
+      group.appendChild(card);
+    });
+
+    container.appendChild(group);
+  });
+}
+
+function toggleCard(i) {
+  document.getElementById(`body-${i}`).classList.toggle('open');
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+}
+
+function hideError() {
+  document.getElementById('error-banner').style.display = 'none';
+}
+
+async function runEval() {
+  const apiKey = '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';
+
+  hideError();
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Running live evaluation...';
+
+  // Reset all cards
+  TEST_CASES.forEach((_, i) => {
+    const card = document.getElementById(`card-${i}`);
+    card.className = 'test-card';
+    document.getElementById(`dot-${i}`).className = 'status-dot';
+    const badge = document.getElementById(`badge-${i}`);
+    badge.className = 'test-badge';
+    badge.textContent = '—';
+    document.getElementById(`response-${i}`).textContent = 'Waiting to run...';
+    document.getElementById(`chip-${i}`).innerHTML = '';
+    document.querySelectorAll(`#keywords-${i} .keyword`).forEach(el => {
+      el.className = 'keyword';
+    });
+  });
+
+  document.getElementById('pass-count').textContent = '—';
+  document.getElementById('partial-count').textContent = '—';
+  document.getElementById('fail-count').textContent = '—';
+  document.getElementById('pass-pct').textContent = '—';
+  document.getElementById('progress-fill').style.width = '0%';
+
+  let passes = 0, partials = 0, fails = 0;
+
+  for (let i = 0; i < TEST_CASES.length; i++) {
+    const tc = TEST_CASES[i];
+
+    // Mark as running
+    document.getElementById(`card-${i}`).classList.add('running');
+    document.getElementById(`dot-${i}`).classList.add('running');
+    document.getElementById(`response-${i}`).innerHTML = '<span class="spinner"></span> Calling Groq...';
+    document.getElementById(`body-${i}`).classList.add('open');
+
+    let response, result, matched, score;
+
+    try {
+      response = await callGroq(apiKey, tc.question);
+      ({ result, matched, score } = scoreResponse(response, tc.expectedKeywords));
+    } catch (err) {
+      showError(`Error on test ${i + 1}: ${err.message}`);
+      btn.disabled = false;
+      btn.innerHTML = '▶ Re-run Evaluation';
+      return;
+    }
+
+    // Update card
+    const card = document.getElementById(`card-${i}`);
+    card.className = `test-card ${result}`;
+
+    const dot = document.getElementById(`dot-${i}`);
+    dot.className = `status-dot ${result}`;
+
+    const badge = document.getElementById(`badge-${i}`);
+    const labels = { pass: 'Pass', partial: 'Partial', fail: 'Fail' };
+    badge.textContent = labels[result];
+    badge.className = `test-badge ${result} visible`;
+
+    document.getElementById(`response-${i}`).textContent = response;
+
+    // Highlight keywords
+    tc.expectedKeywords.forEach(kw => {
+      const el = document.querySelector(`#keywords-${i} [data-kw="${kw}"]`);
+      if (el) el.classList.add(matched.includes(kw) ? 'matched' : 'unmatched');
+    });
+
+    const pct = Math.round(score * 100);
+    document.getElementById(`chip-${i}`).innerHTML =
+      `<span class="score-chip ${result}">${matched.length}/${tc.expectedKeywords.length} keywords matched (${pct}%)</span>`;
+
+    if (result === 'pass') passes++;
+    else if (result === 'partial') partials++;
+    else fails++;
+
+    // Update summary
+    document.getElementById('pass-count').textContent = passes;
+    document.getElementById('partial-count').textContent = partials;
+    document.getElementById('fail-count').textContent = fails;
+
+    const passRate = Math.round((passes / TEST_CASES.length) * 100);
+    document.getElementById('pass-pct').textContent = passRate + '%';
+    document.getElementById('progress-fill').style.width = passRate + '%';
+
+    // Small delay between calls to be kind to rate limits
+    if (i < TEST_CASES.length - 1) await new Promise(r => setTimeout(r, 300));
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '↺ Re-run Evaluation';
+}
+
+buildUI();
+</script>
+</body>
+</html>
