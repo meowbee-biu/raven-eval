@@ -242,16 +242,6 @@
   .test-row-content.actual { border-left-color: var(--muted); color: #94a3b8; font-style: italic; }
   .test-row-content.loading { color: var(--muted); font-family: var(--mono); font-size: 12px; }
 
-  .keywords-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
-  .keyword {
-    font-family: var(--mono); font-size: 11px; padding: 3px 8px;
-    border-radius: 4px; background: var(--surface2);
-    border: 1px solid var(--border); color: var(--muted);
-    transition: all 0.3s;
-  }
-  .keyword.matched { background: var(--teal-dim); border-color: var(--teal); color: var(--teal-light); }
-  .keyword.unmatched { background: var(--red-dim); border-color: var(--red); color: var(--red); text-decoration: line-through; opacity: 0.7; }
-
   .score-chip {
     display: inline-block; font-family: var(--mono); font-size: 11px;
     padding: 3px 10px; border-radius: 99px; margin-top: 8px;
@@ -601,10 +591,8 @@ async function runEval() {
     badge.className = 'test-badge';
     badge.textContent = '—';
     document.getElementById(`response-${i}`).textContent = 'Waiting to run...';
+    document.getElementById(`judge-${i}`).textContent = '—';
     document.getElementById(`chip-${i}`).innerHTML = '';
-    document.querySelectorAll(`#keywords-${i} .keyword`).forEach(el => {
-      el.className = 'keyword';
-    });
   });
 
   document.getElementById('pass-count').textContent = '—';
@@ -656,7 +644,6 @@ async function runEval() {
 
     document.getElementById(`judge-${i}`).textContent = reason;
 
-    const chipColors = { pass: 'teal', partial: 'amber', fail: 'red' };
     document.getElementById(`chip-${i}`).innerHTML =
       `<span class="score-chip ${result}">LLM Judge: ${labels[result]}</span>`;
 
